@@ -1,0 +1,187 @@
+/*
+Used Memory:
+R.00 is the variable selection indirection register
+J is the matrix memory base address
+R.01 is the number of equations
+R00 is a temporary backup register
+R01-R08 are the variables and initial guesses
+R09 is the equation selection indirection register
+
+Registers at J and up contain Jacobian Matrix and Function Matrix (Size: R.01^2+R.01)
+
+Labels:
+LBL 01-08 are the equations which *must* start with STO[->]I
+*/
+
+LBL'1'				// First Equation R01+R02+R03=3
+		RCL 01
+		RCL 02
+		+
+		RCL 03
+		+
+		3
+		-
+		RTN
+LBL'2'				// Second Equation R01^2+R02^2+R03^2=5
+		RCL 01
+		x[^2]
+		RCL 02
+		x[^2]
+		+
+		RCL 03
+		x[^2]
+		+
+		5
+		-
+		RTN
+LBL'3'				// Third Equation e^R01+R01*R02-R01*R03=1
+		RCL 01
+		e[^x]
+		RCL 01
+		RCL 02
+		*
+		+
+		RCL 01
+		RCL 03
+		*
+		-
+		1
+		-
+		END
+LBL'MLS'
+		CL[alpha]
+		"# OF EQ?"
+		PROMPT
+		FILL
+		x[^2]
+		+
+		6
+		+
+		LocR[->]X
+		x[<->] Y
+		STO .01
+iteration::	STO 10
+		1
+		STO .00
+		STO 09
+// Calculate Jacobian Matrix and store at J
+jacobian::	RCL[->].00
+		f'(x)[->]09
+		STO[->]J
+		RCL L
+		STO[->].00
+		
+		INC .00
+		INC J
+		
+		RCL .00
+		x<=? .01
+		JMP jacobian	// Rows
+		1
+		STO .00
+		INC 09
+		RCL 09
+		x<=? .01
+		JMP jacobian	// Columns
+
+		0
+		STO .00		// Effectively disable variable indirection
+		1
+		STO 09
+// Create function matrix and store at J
+function::	XEQ[->]09
+		STO[->]J
+		INC J
+		INC 09
+		RCL 09
+		x<=? .01
+		JMP function
+
+		RCL .01
+		x[^2]
+		RCL+ .01
+		STO- J		// Restore J to initial value
+		
+		RCL .01
+		SDR 2
+		RCL+ J		// Jacobian Matrix Descriptor
+		M[^-1]
+
+		RCL .01
+		x[^2]
+		RCL+ J
+		RCL .01
+		SDR 2
+		+
+		1
+		SDR 4
+		+		// Function Matrix Descriptor
+		ENTER
+		M*
+
+		RCL .01
+		SDR 2
+		1
+		SDR 4
+		+
+		1
+		+		// Variables Matrix Descriptor
+		XEQ'M-'
+
+		/*20
+		INC 10
+		RCL 10
+		x<=? Y
+		GTO'MLS'*/
+
+		M-ALL
+		0
+// Sum the squares to verify convergence
+sum::		RCL[->]Y
+		x[^2]
+		+
+		ISG Y
+		JMP sum
+		x[!=]? 10
+		JMP iteration
+		RTN
+LBL 01
+		STO[->].00
+		XEQ'1'
+		RTN
+LBL 02
+		STO[->].00
+		XEQ'2'
+		RTN
+LBL 03
+		STO[->].00
+		XEQ'3'
+		RTN
+LBL 04
+		STO[->].00
+		XEQ'4'
+		RTN
+LBL 05
+		STO[->].00
+		XEQ'5'
+		RTN
+LBL 06
+		STO[->].00
+		XEQ'6'
+		RTN
+LBL 07
+		STO[->].00
+		XEQ'7'
+		RTN
+LBL 08
+		STO[->].00
+		XEQ'8'
+		RTN
+LBL 09
+		STO[->].00
+		XEQ'9'
+		RTN
+LBL 10
+		STO[->].00
+		XEQ'10'
+		END
