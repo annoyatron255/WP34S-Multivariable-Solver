@@ -1,0 +1,35 @@
+LBL'1'				// First Equation R01+R02+R03=3
+		RCL 01
+		RCL 02
+		+
+		RCL 03
+		+
+		3
+		-
+		RTN
+LBL'2'				// Second Equation R01^2+R02^2+R03^2=5
+		RCL 01
+		x[^2]
+		RCL 02
+		x[^2]
+		+
+		RCL 03
+		x[^2]
+		+
+		5
+		-
+		RTN
+LBL'3'				// Third Equation e^R01+R01*R02-R01*R03=1
+		RCL 01
+		e[^x]
+		RCL 01
+		RCL 02
+		*
+		+
+		RCL 01
+		RCL 03
+		*
+		-
+		1
+		-
+		END
