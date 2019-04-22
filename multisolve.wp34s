@@ -1,16 +1,18 @@
 /*
 Used Memory:
 R.00 is the variable selection indirection register
-J is the matrix memory base address
 R.01 is the number of equations
-R00 is a temporary backup register
-R01-R08 are the variables and initial guesses
-R09 is the equation selection indirection register
+R.02 is the matrix memory base address
+R.03 is the equation selection indirection register
+R.04 is the convergence test register
+R.05 is a junk register as a lazy way to disable indirection for the functions
 
-Registers at J and up contain Jacobian Matrix and Function Matrix (Size: R.01^2+R.01)
+Registers R.06 and up contain the Jacobian and Function Matrixes (Size: R.01^2+R.01)
+
+R01-R10 are the variables and initial guesses
 
 Labels:
-LBL 01-08 are the equations which *must* start with STO[->]I
+LBL '1'-'10' are the equations which use R01-R10 as the variables
 */
 
 LBL'1'				// First Equation R01+R02+R03=3
@@ -55,61 +57,58 @@ LBL'MLS'
 		FILL
 		x[^2]
 		+
-		6
+		6		// 6 local registers in addition to matrixes
 		+
 		LocR[->]X
 		x[<->] Y
 		STO .01
-iteration::	STO 10
+		# 118		// R.06 to start matrixes
+		STO .02
+iteration::	STO .04
 		1
 		STO .00
-		STO 09
-// Calculate Jacobian Matrix and store at J
-jacobian::	RCL[->].00
-		f'(x)[->]09
-		STO[->]J
+		STO .03
+jacobian::	RCL[->].00	// Calculate Jacobian Matrix and store -> R.02
+		f'(x)[->].03
+		STO[->].02
 		RCL L
 		STO[->].00
 		
 		INC .00
-		INC J
+		INC .02
 		
 		RCL .00
 		x<=? .01
 		JMP jacobian	// Rows
 		1
 		STO .00
-		INC 09
-		RCL 09
+		INC .03
+		RCL .03
 		x<=? .01
 		JMP jacobian	// Columns
 
-		0
+		# 117		// R.05 junk register
 		STO .00		// Effectively disable variable indirection
 		1
-		STO 09
-// Create function matrix and store at J
-function::	XEQ[->]09
-		STO[->]J
-		INC J
-		INC 09
-		RCL 09
+		STO .03
+function::	XEQ[->].03	// Create function matrix and store -> R.02
+		STO[->].02
+		INC .02
+		INC .03
+		RCL .03
 		x<=? .01
 		JMP function
 
-		RCL .01
-		x[^2]
-		RCL+ .01
-		STO- J		// Restore J to initial value
-		
+		# 118		// R.06 to start matrixes
+		STO .02		// Restore .02 to initial value
+	
 		RCL .01
 		SDR 2
-		RCL+ J		// Jacobian Matrix Descriptor
-		M[^-1]
+		RCL+ .02	// Jacobian Matrix Descriptor
 
 		RCL .01
 		x[^2]
-		RCL+ J
+		RCL+ .02
 		RCL .01
 		SDR 2
 		+
@@ -117,7 +116,7 @@ function::	XEQ[->]09
 		SDR 4
 		+		// Function Matrix Descriptor
 		ENTER
-		M*
+		LINEQS
 
 		RCL .01
 		SDR 2
@@ -136,14 +135,14 @@ function::	XEQ[->]09
 
 		M-ALL
 		0
-// Sum the squares to verify convergence
-sum::		RCL[->]Y
+sum::		RCL[->]Y	// Sum the squares to verify convergence
 		x[^2]
 		+
 		ISG Y
 		JMP sum
-		x[!=]? 10
+		x[!=]? .04
 		JMP iteration
+		RCLS 01		// Load stack with answers (the quick and dirty way)
 		RTN
 LBL 01
 		STO[->].00
