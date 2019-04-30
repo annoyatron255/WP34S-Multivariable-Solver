@@ -1,0 +1,169 @@
+/*
+Used Memory:
+R.00 is the variable selection indirection register
+R.01 is the number of equations
+R.02 is the matrix memory base address
+R.03 is the equation selection indirection register
+R.04 is the convergence test register
+R.05 is Jacobian matrix descriptor
+R.06 is the scratch matrix descriptor
+R.06 is the function matrix descriptor
+R.07 is the delta f(x) matrix descriptor
+R.08 is the delta x matrix descriptor
+
+Registers R.16 and up contain the Jacobian and Function Matrixes (2x^2+3x size)
+
+R01-R7 are the variables and initial guesses
+
+Labels:
+LBL '1'-'7' are the equations which use R01-R10 as the variables
+*/
+
+LBL'MLS'
+	// Auto detect number of labels (optional)
+		0
+		LBL?'1'
+		INC X
+		LBL?'2'
+		INC X
+		LBL?'3'
+		INC X
+		LBL?'4'
+		INC X
+		LBL?'5'
+		INC X
+		LBL?'6'
+		INC X
+		LBL?'7'
+		INC X
+
+		CL[alpha]
+		"# OF EQ?"
+		PROMPT		// Ask in case autodetect got it wrong
+
+	// Allocate registers
+		FILL
+		x[^2]
+		2
+		*
+		x[<->] Y
+		3
+		*
+		+
+		# 16		// Alloacte all 16 directly addressable local registers
+		+
+		LocR[->]X	// Allocate 2x^2+3x+16 registers (total)
+
+		x[<->] Y
+		STO .01		// Store number of equations in R.01
+
+		#128
+		STO .02
+	// Create Jacobian matrix descriptor
+		RCL .01
+		SDR 2
+		+
+		STO .05		// 128.0200
+	// Create scratch matrix descriptor
+		RCL .01
+		x[^2]
+		+
+		STO .06		// (128+k^2).0200
+	// Create function matrix descripor
+		RCL .01
+		x[^2]
+		+
+		1
+		SDR 4
+		+
+		STO .07		// (128+2k^2).0201
+	// Create delta f(x) matrix descriptor
+		RCL+ .01
+		STO .08		// (128+2k^2+k).0201
+	// Create delta x matrix descriptor
+		RCL+ .01
+		STO .09		// (128+2k^2+2k).0201
+
+iteration::	STO .04		//REMOVE ME LATER
+	// Manually calculate initial Jacobian matrix
+		1
+		STO .00
+		STO .03
+jacobian::	RCL[->].00	// Calculate Jacobian Matrix and store -> R.02
+		f'(x) 01
+		STO[->].02
+		RCL L
+		STO[->].00
+		
+		INC .00
+		INC .02
+		
+		RCL .00
+		x<=? .01
+		JMP jacobian	// Rows
+		1
+		STO .00
+		INC .03
+		RCL .03
+		x<=? .01
+		JMP jacobian	// Columns
+
+	// Calculate function values
+		1
+		STO .03
+function::	XEQ 02		// Create function matrix and store -> R.02
+		STO[->].02
+		INC .02
+		INC .03
+		RCL .03
+		x<=? .01
+		JMP function
+
+		# 128		// R.16 to start matrixes
+		STO .02		// Restore .02 to initial value
+
+		RCL .01
+		SDR 2
+		RCL+ .02	// Jacobian Matrix Descriptor
+
+		RCL .01
+		x[^2]
+		RCL+ .02
+		RCL .01
+		SDR 2
+		+
+		1
+		SDR 4
+		+		// Function Matrix Descriptor
+		ENTER
+		LINEQS
+
+		RCL .01
+		SDR 2
+		1
+		SDR 4
+		+
+		1
+		+		// Variables Matrix Descriptor
+		XEQ'M-'
+
+		M-ALL
+		0
+sum::		RCL[->]Y	// Sum the squares to verify convergence
+		x[^2]
+		+
+		ISG Y
+		JMP sum
+		x[!=]? .04
+		JMP iteration
+		RCLS 01		// Load stack with answers (the quick and dirty way)
+		RTN
+
+	// Global functions wrapper
+LBL 01
+		STO[->].00	// Select variable
+LBL 02
+		# 48		// "0" in ASCII
+		RCL+ .03
+		[alpha]XEQ X
+		END
