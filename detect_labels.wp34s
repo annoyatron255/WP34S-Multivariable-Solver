@@ -1,0 +1,21 @@
+0
+LBL? '1'
+INC X
+LBL? '2'
+INC X
+LBL? '3'
+INC X
+LBL? '4'
+INC X
+LBL? '5'
+INC X
+LBL? '6'
+INC X
+LBL? '7'
+INC X
+LBL? '8'
+INC X
+LBL? '9'
+INC X
+LBL? '10'
+INC X

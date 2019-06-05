@@ -16,6 +16,29 @@ LBL '1'-'10' are the equations which use R01-R10 as the variables
 */
 
 LBL'MLS'
+		/* Auto detect number of labels (optional) */
+		0
+		LBL?'1'
+		INC X
+		LBL?'2'
+		INC X
+		LBL?'3'
+		INC X
+		LBL?'4'
+		INC X
+		LBL?'5'
+		INC X
+		LBL?'6'
+		INC X
+		LBL?'7'
+		INC X
+		LBL?'8'
+		INC X
+		LBL?'9'
+		INC X
+		LBL?'10'
+		INC X
+		/* Auto detect number of labels end */
 		CL[alpha]
 		"# OF EQ?"
 		PROMPT
@@ -34,7 +57,8 @@ iteration::	STO .04
 		STO .00
 		STO .03
 jacobian::	RCL[->].00	// Calculate Jacobian Matrix and store -> R.02
-		f'(x)[->].03
+		//f'(x)[->].03
+		f'(x) 01
 		STO[->].02
 		RCL L
 		STO[->].00
@@ -56,7 +80,7 @@ jacobian::	RCL[->].00	// Calculate Jacobian Matrix and store -> R.02
 		STO .00		// Effectively disable variable indirection
 		1
 		STO .03
-function::	XEQ[->].03	// Create function matrix and store -> R.02
+function::	XEQ 01		// Create function matrix and store -> R.02
 		STO[->].02
 		INC .02
 		INC .03
@@ -111,6 +135,15 @@ sum::		RCL[->]Y	// Sum the squares to verify convergence
 		RTN
 LBL 01
 		STO[->].00
+		# 48
+		STO+ .03
+		[alpha]XEQ .03
+		# 48
+		STO- .03
+		x[<->] Y
+		RTN
+/*LBL 01
+		STO[->].00
 		XEQ'1'
 		RTN
 LBL 02
@@ -147,5 +180,5 @@ LBL 09
 		RTN
 LBL 10
 		STO[->].00
-		XEQ'10'
+		XEQ'10'*/
 		END

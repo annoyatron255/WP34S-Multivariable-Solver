@@ -7,9 +7,9 @@ R.03 is the equation selection indirection register
 R.04 is the convergence test register
 R.05 is Jacobian matrix descriptor
 R.06 is the scratch matrix descriptor
-R.06 is the function matrix descriptor
-R.07 is the delta f(x) matrix descriptor
-R.08 is the delta x matrix descriptor
+R.07 is the function matrix descriptor
+R.08 is the delta f(x) matrix descriptor
+R.09 is the delta x matrix descriptor
 
 Registers R.16 and up contain the Jacobian and Function Matrixes (2x^2+3x size)
 
@@ -50,14 +50,14 @@ LBL'MLS'
 		3
 		*
 		+
-		# 16		// Alloacte all 16 directly addressable local registers
+		# 16		// Allocate all 16 directly addressable local registers
 		+
 		LocR[->]X	// Allocate 2x^2+3x+16 registers (total)
 
 		x[<->] Y
 		STO .01		// Store number of equations in R.01
 
-		#128
+		# 128
 		STO .02
 	// Create Jacobian matrix descriptor
 		RCL .01
@@ -69,7 +69,7 @@ LBL'MLS'
 		x[^2]
 		+
 		STO .06		// (128+k^2).0200
-	// Create function matrix descripor
+	// Create function matrix descriptor
 		RCL .01
 		x[^2]
 		+
@@ -84,7 +84,6 @@ LBL'MLS'
 		RCL+ .01
 		STO .09		// (128+2k^2+2k).0201
 
-iteration::	STO .04		//REMOVE ME LATER
 	// Manually calculate initial Jacobian matrix
 		1
 		STO .00
@@ -107,44 +106,78 @@ jacobian::	RCL[->].00	// Calculate Jacobian Matrix and store -> R.02
 		RCL .03
 		x<=? .01
 		JMP jacobian	// Columns
+		RCL .05
+		M[^-1]
+		JMP initial_run
+
+iteration::	STO .04
+	// Calculate delta f(x)
+		RCL .07
+		RCL .08
+		XEQ'M-'
+		1
+		+/-
+		x[<->] Y
+		XEQ'M-y'
+
+	// Calculate delta x
+		RCL .07
+		FP
+		INC X		// Variables matrix descriptor	
+		RCL .09
+		XEQ'M-'
+		1
+		+/-
+		x[<->] Y
+		XEQ'M-y'
+
+	// Calculate improved inverse Jacobian ("bad" Broyden's method)
+		RCL .05
+		RCL .08
+		RCL .06
+		M[times]
+		RCL .09
+		XEQ'M-'
+
+		RCL .08
+		XEQ'FNM'
+		x[^2]
+		1/x
+		RCL .09
+		XEQ'M-y'
+
+		RCL L
+		RCL .08
+		TRANSP
+		RCL .06
+		M[times]
+		RCL .05
+		XEQ'M-'
 
 	// Calculate function values
+initial_run::	RCL .07
+		M-ALL
+		STO .02
 		1
 		STO .03
-function::	XEQ 02		// Create function matrix and store -> R.02
+function::	XEQ 02
 		STO[->].02
-		INC .02
 		INC .03
-		RCL .03
-		x<=? .01
+		ISG .02
 		JMP function
 
 		# 128		// R.16 to start matrixes
 		STO .02		// Restore .02 to initial value
 
-		RCL .01
-		SDR 2
-		RCL+ .02	// Jacobian Matrix Descriptor
-
-		RCL .01
-		x[^2]
-		RCL+ .02
-		RCL .01
-		SDR 2
-		+
-		1
-		SDR 4
-		+		// Function Matrix Descriptor
+	// Calculate iteration
+		RCL .05
+		RCL .07
 		ENTER
-		LINEQS
+		M*
 
-		RCL .01
-		SDR 2
-		1
-		SDR 4
-		+
-		1
-		+		// Variables Matrix Descriptor
+		RCL .07
+		FP
+		INC X		// Variables matrix descriptor
 		XEQ'M-'
 
 		M-ALL
